@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import analyze, letter
+from app.config import ALLOWED_ORIGINS
 
 app = FastAPI(
     title="CareerPulse AI Backend",
@@ -8,11 +9,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Setup CORS so the React frontend on any port can access it directly during development
+# Setup CORS with explicit allowed origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
