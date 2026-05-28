@@ -1,7 +1,9 @@
-import spacy
+import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+
+logger = logging.getLogger("MLEngine")
 
 # Standard tech vocabulary grouped by categories for skill extraction and radar charts
 TECH_SKILLS_CATEGORIES = {
@@ -45,26 +47,64 @@ def get_nlp():
     global _nlp
     if _nlp is None:
         try:
+            import spacy
             # Load small English model
             _nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            # Download if not present
-            from spacy.cli import download
-            download("en_core_web_sm")
-            _nlp = spacy.load("en_core_web_sm")
+        except Exception:
+            try:
+                import spacy
+                # Try downloading if not present
+                logger.info("spaCy model 'en_core_web_sm' not found. Attempting download...")
+                from spacy.cli import download
+                download("en_core_web_sm")
+                _nlp = spacy.load("en_core_web_sm")
+            except Exception as e:
+                logger.warning(f"Could not load or download spaCy model 'en_core_web_sm': {e}. Falling back to basic preprocessing.")
+                _nlp = None
     return _nlp
 
-def preprocess_text(text: str) -> str:
-    """Preprocess text using spaCy (lowercase, lemmatize, remove stop words/punctuation)."""
+def preprocess_text_fallback(text: str) -> str:
+    """Fallback text preprocessing using simple regex tokenization and common English stop words."""
     if not text:
         return ""
-    nlp = get_nlp()
-    doc = nlp(text.lower())
-    processed_tokens = []
-    for token in doc:
-        if not token.is_stop and not token.is_punct and not token.is_space:
-            processed_tokens.append(token.lemma_)
+    # Simple tokenization: lowercase and find alphanumeric words
+    words = re.findall(r'\b\w+\b', text.lower())
+    # Basic set of English stop words
+    stop_words = {
+        "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
+        "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", 
+        "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", 
+        "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", 
+        "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", 
+        "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", 
+        "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", 
+        "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", 
+        "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", 
+        "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", 
+        "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", 
+        "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"
+    }
+    processed_tokens = [w for w in words if w not in stop_words]
     return " ".join(processed_tokens)
+
+def preprocess_text(text: str) -> str:
+    """Preprocess text using spaCy (lowercase, lemmatize, remove stop words/punctuation).
+    Falls back to basic preprocessing if spaCy is not available or fails."""
+    if not text:
+        return ""
+    try:
+        nlp = get_nlp()
+        if nlp is not None:
+            doc = nlp(text.lower())
+            processed_tokens = []
+            for token in doc:
+                if not token.is_stop and not token.is_punct and not token.is_space:
+                    processed_tokens.append(token.lemma_)
+            return " ".join(processed_tokens)
+    except Exception as e:
+        logger.warning(f"spaCy preprocessing failed: {e}. Falling back to basic preprocessing.")
+    
+    return preprocess_text_fallback(text)
 
 def extract_skills(text: str) -> set:
     """Extract known technical skills from text using phrase matching and token boundaries."""
