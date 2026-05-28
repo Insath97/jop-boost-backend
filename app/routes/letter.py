@@ -89,7 +89,8 @@ async def generate_cover_letter(request: CoverLetterRequest):
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=GeminiCoverLetterResponse,
-                system_instruction="You are an expert executive resume writer and career consultant. Return a JSON object with 'coverLetter' containing a markdown cover letter."
+                system_instruction="You are an expert executive resume writer and career consultant. Return a JSON object with 'coverLetter' containing a markdown cover letter.",
+                temperature=0.0
             ),
         )
 

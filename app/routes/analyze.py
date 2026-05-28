@@ -211,7 +211,8 @@ async def analyze_resume(request: AnalyzeRequest):
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=GeminiAnalysisResponse,
-                system_instruction=system_instruction
+                system_instruction=system_instruction,
+                temperature=0.0
             ),
         )
 
